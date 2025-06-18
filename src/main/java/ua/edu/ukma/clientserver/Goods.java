@@ -10,8 +10,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Goods {
+    private Integer id;
     private String name;
     private String category;
-    private int amount;
-    private double price;
+    private Integer amount;
+    private Double price;
 }
