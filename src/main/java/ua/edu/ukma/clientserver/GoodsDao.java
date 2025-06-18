@@ -59,10 +59,7 @@ public class GoodsDao implements AutoCloseable {
     }
 
     public void delete(int id) {
-        String sql = String.format(
-            "DELETE FROM %s WHERE %s = ?",
-            TABLE_NAME, ID
-        );
+        String sql = String.format("DELETE FROM %s WHERE %s = ?", TABLE_NAME, ID);
 
         try (PreparedStatement query = connection.prepareStatement(sql)) {
             query.setInt(1, id);
@@ -73,10 +70,7 @@ public class GoodsDao implements AutoCloseable {
     }
 
     public Goods getById(int id) {
-        String sql = String.format(
-            "SELECT * FROM %s WHERE %s = ?",
-            TABLE_NAME, ID
-        );
+        String sql = String.format("SELECT * FROM %s WHERE %s = ?", TABLE_NAME, ID);
 
         Goods goods = null;
         try (PreparedStatement query = connection.prepareStatement(sql)) {
@@ -92,14 +86,17 @@ public class GoodsDao implements AutoCloseable {
         return goods;
     }
 
-    public List<Goods> getAll() {
-        String sql = String.format(
-            "SELECT * FROM %s",
-            TABLE_NAME
-        );
+    public List<Goods> getByParams(SearchParams params) {
+        StringBuilder sql = new StringBuilder("SELECT * FROM " + TABLE_NAME);
+        List<Object> arguments = new ArrayList<>();
+        buildWhereClause(sql, arguments, params);
 
         List<Goods> goods = new ArrayList<>();
-        try (PreparedStatement query = connection.prepareStatement(sql)) {
+        try (PreparedStatement query = connection.prepareStatement(sql.toString())) {
+            for (int i = 0; i < arguments.size(); i++) {
+                query.setObject(i+1, arguments.get(i));
+            }
+
             ResultSet resultSet = query.executeQuery();
             while (resultSet.next()) {
                 goods.add(extractGoodsFromResultSet(resultSet));
@@ -109,6 +106,45 @@ public class GoodsDao implements AutoCloseable {
         }
 
         return goods;
+    }
+
+    private void buildWhereClause(StringBuilder sb, List<Object> arguments, SearchParams params) {
+        ArrayList<String> conditions = new ArrayList<>();
+
+        if (params.getName() != null && !params.getName().isBlank()) {
+            conditions.add(NAME + " ILIKE ?");
+            arguments.add("%" + params.getName() + "%");
+        }
+
+        if (params.getCategory() != null && !params.getCategory().isBlank()) {
+            conditions.add(CATEGORY + " ILIKE ?");
+            arguments.add("%" + params.getCategory() + "%");
+        }
+
+        if (params.getPriceFrom() != null) {
+            conditions.add(PRICE + " >= ?");
+            arguments.add(params.getPriceFrom());
+        }
+
+        if (params.getPriceTo() != null) {
+            conditions.add(PRICE + " <= ?");
+            arguments.add(params.getPriceTo());
+        }
+
+        if (params.getAmountFrom() != null) {
+            conditions.add(AMOUNT + " >= ?");
+            arguments.add(params.getAmountFrom());
+        }
+
+        if (params.getAmountTo() != null) {
+            conditions.add(AMOUNT + " <= ?");
+            arguments.add(params.getAmountTo());
+        }
+
+        if (!conditions.isEmpty()) {
+            sb.append(" WHERE ");
+            sb.append(String.join(" AND ", conditions));
+        }
     }
 
     private static Goods extractGoodsFromResultSet(ResultSet resultSet) throws SQLException {
