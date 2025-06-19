@@ -1,7 +1,6 @@
-version: '3.8'
 services:
   storage_db:
-    image: postgres:latest
+    image: postgres:13.4
     container_name: storage_container
     restart: always
     env_file:

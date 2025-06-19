@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,18 +24,22 @@ public class GoodsDao implements AutoCloseable {
         this.connection = connection;
     }
 
-    public void create(Goods goods) {
+    public int create(Goods goods) {
         String sql = String.format(
             "INSERT INTO %s (%s, %s, %s, %s) VALUES (?, ?, ?, ?)",
             TABLE_NAME, NAME, CATEGORY, AMOUNT, PRICE
         );
 
-        try (PreparedStatement query = connection.prepareStatement(sql)) {
+        try (PreparedStatement query = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             query.setString(1, goods.getName());
             query.setString(2, goods.getCategory());
             query.setInt(3, goods.getAmount());
             query.setDouble(4, goods.getPrice());
             query.executeUpdate();
+
+            ResultSet keys = query.getGeneratedKeys();
+            keys.next();
+            return keys.getInt(1);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -69,6 +74,16 @@ public class GoodsDao implements AutoCloseable {
         }
     }
 
+    public void deleteAll() {
+        String sql = String.format("DELETE FROM %s", TABLE_NAME);
+
+        try (PreparedStatement query = connection.prepareStatement(sql)) {
+            query.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public Goods getById(int id) {
         String sql = String.format("SELECT * FROM %s WHERE %s = ?", TABLE_NAME, ID);
 
@@ -84,6 +99,10 @@ public class GoodsDao implements AutoCloseable {
         }
 
         return goods;
+    }
+
+    public List<Goods> getAll() {
+        return getByParams(new SearchParams());
     }
 
     public List<Goods> getByParams(SearchParams params) {
